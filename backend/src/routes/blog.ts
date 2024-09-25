@@ -24,9 +24,9 @@ blogRouter.use("/*", async(c, next) => {
 		c.status(401);
 		return c.json({ error: "unauthorized" });
 	}
-	const token = jwt.split(' ')[1];
+	//const token = jwt.split(' ')[1];
     try {
-        const payload = await verify(token, c.env.JWT_SECRET);
+        const payload = await verify(jwt, c.env.JWT_SECRET);
         console.log(payload)
         if (!payload) {
             c.status(401);
@@ -37,6 +37,7 @@ blogRouter.use("/*", async(c, next) => {
         await next()
     } catch(e) {
         c.status(403);
+        console.log(e);
         return c.json({
             msg: "You are not logged in"
         })
@@ -104,14 +105,25 @@ blogRouter.get('/bulk', async(c) => {
 		datasourceUrl: c.env?.DATABASE_URL	,
 	}).$extends(withAccelerate());
 
-    const blogs = await prisma.blog.findMany();
+    const blogs = await prisma.blog.findMany({
+        select: {
+            content: true,
+            title: true,
+            id: true,
+            author: {
+                select: {
+                    name: true
+                }
+            }
+        }
+    });
     return c.json({
         blogs
     })
 
 })
 
-blogRouter.get('/get/:id', async(c) => {
+blogRouter.get('/:id', async(c) => {
     const prisma = new PrismaClient({
 		datasourceUrl: c.env?.DATABASE_URL	,
 	}).$extends(withAccelerate());
@@ -122,6 +134,16 @@ blogRouter.get('/get/:id', async(c) => {
         const blog = await prisma.blog.findFirst({
             where: {
                 id: Number(blog_id)
+            },
+            select: {
+                id: true,
+                title: true,
+                content: true,
+                author: {
+                    select: {
+                        name: true
+                    }
+                }
             }
         })
         return c.json({
